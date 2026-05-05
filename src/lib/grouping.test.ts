@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { STATUS_ORDER, groupByStatus, countByStatus } from "./grouping";
+import {
+  STATUS_ORDER,
+  BUCKET_ORDER,
+  groupByStatus,
+  countByStatus,
+  bucketSessions,
+} from "./grouping";
 import type { Session } from "./types";
 
 function s(id: string, status: Session["status"], lastActivity: string): Session {
@@ -16,6 +22,10 @@ function s(id: string, status: Session["status"], lastActivity: string): Session
     lastActivity,
     tokens: 0,
   };
+}
+
+function isoMinusHours(now: Date, hours: number): string {
+  return new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
 }
 
 describe("STATUS_ORDER", () => {
@@ -55,5 +65,62 @@ describe("countByStatus", () => {
     expect(counts.working).toBe(2);
     expect(counts.waiting).toBe(1);
     expect(counts.idle).toBe(0);
+  });
+});
+
+describe("BUCKET_ORDER", () => {
+  it("ends with the collapsed recent group", () => {
+    expect(BUCKET_ORDER[BUCKET_ORDER.length - 1]).toBe("recent");
+  });
+
+  it("places working/waiting/plan/idle before recent in that order", () => {
+    expect(BUCKET_ORDER).toEqual(["working", "waiting", "plan", "idle", "recent"]);
+  });
+});
+
+describe("bucketSessions", () => {
+  const now = new Date("2026-05-10T12:00:00Z");
+
+  it("puts sessions <=2d old in their status bucket", () => {
+    const buckets = bucketSessions(
+      [
+        s("a", "waiting", isoMinusHours(now, 1)),
+        s("b", "idle", isoMinusHours(now, 24)),
+        s("c", "working", isoMinusHours(now, 47)),
+      ],
+      now,
+    );
+    expect(buckets.waiting.map((x) => x.id)).toEqual(["a"]);
+    expect(buckets.idle.map((x) => x.id)).toEqual(["b"]);
+    expect(buckets.working.map((x) => x.id)).toEqual(["c"]);
+    expect(buckets.recent).toEqual([]);
+  });
+
+  it("puts sessions in the 2-7d window in the recent bucket regardless of status", () => {
+    const buckets = bucketSessions(
+      [s("a", "waiting", isoMinusHours(now, 49)), s("b", "idle", isoMinusHours(now, 24 * 6))],
+      now,
+    );
+    expect(buckets.waiting).toEqual([]);
+    expect(buckets.idle).toEqual([]);
+    expect(buckets.recent.map((x) => x.id)).toEqual(["a", "b"]);
+  });
+
+  it("drops sessions >7d old defensively", () => {
+    const buckets = bucketSessions([s("a", "idle", isoMinusHours(now, 24 * 8))], now);
+    expect(buckets.recent).toEqual([]);
+    expect(buckets.idle).toEqual([]);
+  });
+
+  it("sorts each bucket most-recent first", () => {
+    const buckets = bucketSessions(
+      [
+        s("old", "waiting", isoMinusHours(now, 5)),
+        s("new", "waiting", isoMinusHours(now, 1)),
+        s("mid", "waiting", isoMinusHours(now, 3)),
+      ],
+      now,
+    );
+    expect(buckets.waiting.map((x) => x.id)).toEqual(["new", "mid", "old"]);
   });
 });
