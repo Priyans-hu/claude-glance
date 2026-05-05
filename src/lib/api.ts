@@ -12,6 +12,16 @@ export async function getSessions(): Promise<Session[]> {
 }
 
 /**
+ * Force a full re-walk of `~/.claude/projects/`. Returns the new
+ * visible session count (already excluding stale sessions). The backend
+ * also emits a `sessions_changed` event, so the store update path stays
+ * unchanged.
+ */
+export async function rescanSessions(): Promise<number> {
+  return invoke<number>("rescan_sessions");
+}
+
+/**
  * Subscribe to live session updates. Returns an unlisten function.
  * The callback receives the full snapshot every time something changes.
  */

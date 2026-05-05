@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { Eye } from "lucide-svelte";
+  import { Eye, RefreshCw } from "lucide-svelte";
   import StatusGroup from "$lib/components/StatusGroup.svelte";
   import StatusIcon from "$lib/components/StatusIcon.svelte";
   import { sessionStore } from "$lib/stores.svelte";
-  import { STATUS_ORDER } from "$lib/grouping";
+  import { BUCKET_ORDER } from "$lib/grouping";
+  import { rescanSessions } from "$lib/api";
   import type { SessionStatus } from "$lib/types";
 
   onMount(() => {
@@ -16,7 +17,43 @@
   });
 
   // Header surfaces only the high-signal counts.
-  const headerStatuses: SessionStatus[] = ["waiting", "running", "plan", "idle", "done"];
+  const headerStatuses: SessionStatus[] = ["working", "waiting", "plan", "idle"];
+
+  // Refresh button state. We keep the spinner visible for at least 400ms
+  // so it doesn't flicker on a near-instant rescan, and surface the result
+  // count for ~1.5s after.
+  const SPINNER_MIN_MS = 400;
+  const RESULT_VISIBLE_MS = 1500;
+  let rescanning = $state(false);
+  let lastCount: number | null = $state(null);
+  let resultTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function onRescan() {
+    if (rescanning) return;
+    rescanning = true;
+    lastCount = null;
+    if (resultTimer) {
+      clearTimeout(resultTimer);
+      resultTimer = null;
+    }
+    const startedAt = Date.now();
+    try {
+      const count = await rescanSessions();
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < SPINNER_MIN_MS) {
+        await new Promise((r) => setTimeout(r, SPINNER_MIN_MS - elapsed));
+      }
+      lastCount = count;
+      resultTimer = setTimeout(() => {
+        lastCount = null;
+        resultTimer = null;
+      }, RESULT_VISIBLE_MS);
+    } catch (err) {
+      sessionStore.error = err instanceof Error ? err.message : String(err);
+    } finally {
+      rescanning = false;
+    }
+  }
 </script>
 
 <main class="flex min-h-screen flex-col gap-4 px-6 py-5">
@@ -40,6 +77,26 @@
           </span>
         {/if}
       {/each}
+
+      {#if lastCount !== null}
+        <span class="text-xs text-cg-muted" data-testid="rescan-result">
+          Re-scanned {lastCount} session{lastCount === 1 ? "" : "s"}
+        </span>
+      {/if}
+
+      <button
+        type="button"
+        class="flex items-center gap-1 rounded p-1 text-cg-muted transition-colors hover:bg-cg-surface hover:text-cg-text disabled:opacity-50"
+        title="Re-scan sessions"
+        aria-label="Re-scan sessions"
+        data-testid="header-rescan-btn"
+        disabled={rescanning}
+        onclick={onRescan}
+      >
+        <span class={rescanning ? "cg-spin" : ""}>
+          <RefreshCw size={14} strokeWidth={2} />
+        </span>
+      </button>
     </div>
   </header>
 
@@ -64,9 +121,30 @@
     </section>
   {:else}
     <div class="flex flex-col gap-4">
-      {#each STATUS_ORDER as status (status)}
-        <StatusGroup {status} sessions={sessionStore.groupedByStatus[status]} />
+      {#each BUCKET_ORDER as bucket (bucket)}
+        <StatusGroup
+          {bucket}
+          sessions={sessionStore.bucketed[bucket]}
+          collapsible={bucket === "recent"}
+          expanded={sessionStore.showRecent}
+          onToggle={bucket === "recent" ? () => sessionStore.toggleShowRecent() : undefined}
+        />
       {/each}
     </div>
   {/if}
 </main>
+
+<style>
+  .cg-spin {
+    display: inline-flex;
+    animation: cg-spin 0.9s linear infinite;
+  }
+  @keyframes cg-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

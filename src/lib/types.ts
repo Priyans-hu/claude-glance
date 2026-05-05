@@ -1,7 +1,7 @@
 // Domain types for claude-glance.
 // Kept minimal at v0; extended as the watcher and parser land.
 
-export type SessionStatus = "running" | "waiting" | "plan" | "idle" | "done" | "error";
+export type SessionStatus = "working" | "waiting" | "plan" | "idle";
 
 export interface Session {
   /** UUID, derived from the JSONL filename. */

@@ -11,12 +11,12 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use notify::{RecursiveMode, Watcher};
 use notify_debouncer_full::new_debouncer;
 use tokio::sync::mpsc;
 
-use crate::scanner::{load_session, scan};
+use crate::scanner::{load_session, scan, scan_at};
 use crate::state::Session;
 
 pub type SessionMap = Arc<Mutex<HashMap<String, Session>>>;
@@ -102,7 +102,10 @@ pub fn spawn(root: PathBuf) -> Result<(SessionMap, mpsc::Receiver<WatchUpdate>)>
 /// Apply a batch of changed filesystem paths to the in-memory session map.
 /// Pulled out so the unit tests don't need a real watcher.
 pub fn apply_paths(paths: &[PathBuf], map: &SessionMap) {
-    let now = Utc::now();
+    apply_paths_at(paths, map, Utc::now())
+}
+
+pub fn apply_paths_at(paths: &[PathBuf], map: &SessionMap, now: DateTime<Utc>) {
     for path in paths {
         if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
             continue;
@@ -122,7 +125,11 @@ pub fn apply_paths(paths: &[PathBuf], map: &SessionMap) {
 
 /// Bulk re-scan helper used at startup if a refresh is requested.
 pub fn refresh(root: &Path, map: &SessionMap) -> Result<()> {
-    let fresh = scan(root).context("scan failed")?;
+    refresh_at(root, map, Utc::now())
+}
+
+pub fn refresh_at(root: &Path, map: &SessionMap, now: DateTime<Utc>) -> Result<()> {
+    let fresh = scan_at(root, now).context("scan failed")?;
     let mut guard = map.lock().unwrap();
     *guard = fresh;
     Ok(())
@@ -131,9 +138,14 @@ pub fn refresh(root: &Path, map: &SessionMap) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
     use std::fs::{self, File};
     use std::io::Write;
     use tempfile::tempdir;
+
+    fn fixture_now() -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2026, 3, 30, 8, 0, 0).unwrap()
+    }
 
     #[test]
     fn apply_paths_inserts_new_session() {
@@ -149,7 +161,7 @@ mod tests {
         .unwrap();
 
         let map: SessionMap = Arc::new(Mutex::new(HashMap::new()));
-        apply_paths(&[path], &map);
+        apply_paths_at(&[path], &map, fixture_now());
 
         let guard = map.lock().unwrap();
         assert_eq!(guard.len(), 1);
@@ -182,7 +194,7 @@ mod tests {
         // Path to a non-existent jsonl with stem "ghost".
         let dir = tempdir().unwrap();
         let path = dir.path().join("ghost.jsonl");
-        apply_paths(&[path], &map);
+        apply_paths_at(&[path], &map, fixture_now());
         assert!(map.lock().unwrap().is_empty());
     }
 
@@ -192,7 +204,7 @@ mod tests {
         let path = dir.path().join("README.md");
         File::create(&path).unwrap();
         let map: SessionMap = Arc::new(Mutex::new(HashMap::new()));
-        apply_paths(&[path], &map);
+        apply_paths_at(&[path], &map, fixture_now());
         assert!(map.lock().unwrap().is_empty());
     }
 
@@ -210,7 +222,7 @@ mod tests {
         .unwrap();
 
         let map: SessionMap = Arc::new(Mutex::new(HashMap::new()));
-        refresh(dir.path(), &map).unwrap();
+        refresh_at(dir.path(), &map, fixture_now()).unwrap();
         assert_eq!(map.lock().unwrap().len(), 1);
     }
 }

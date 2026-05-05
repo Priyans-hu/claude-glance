@@ -1,6 +1,6 @@
 [package]
 name = "claude-glance"
-version = "0.0.1"
+version = "0.0.2"
 description = "Read-only macOS dashboard for monitoring active Claude Code sessions"
 authors = ["Priyanshu Garg"]
 edition = "2021"
