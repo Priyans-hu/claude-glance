@@ -1,4 +1,5 @@
 pub mod parser;
+pub mod scanner;
 pub mod state;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
