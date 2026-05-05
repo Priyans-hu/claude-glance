@@ -15,7 +15,7 @@ jobs:
     name: Frontend (lint · type-check · test · build)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -44,7 +44,7 @@ jobs:
       run:
         working-directory: src-tauri
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
