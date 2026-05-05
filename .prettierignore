@@ -5,3 +5,6 @@ src-tauri/target
 src-tauri/gen
 package-lock.json
 bun.lockb
+# Static landing page lives in docs/ for GitHub Pages and follows its own
+# formatting rules (see #11).
+docs

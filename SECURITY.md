@@ -9,6 +9,7 @@ Please report security issues privately rather than opening a public issue.
 **Email:** `pg.tldr@gmail.com`
 
 Include:
+
 - A description of the issue
 - Steps to reproduce (if applicable)
 - Affected version / commit SHA
@@ -23,12 +24,14 @@ Only the latest release is supported. `claude-glance` is pre-alpha; expect frequ
 ## Scope
 
 In scope:
+
 - Local privilege escalation
 - Reading files outside `~/.claude/projects/` and `~/.claude/settings.json`
 - Any network egress from the app
 - Data integrity issues that could corrupt Claude Code state
 
 Out of scope:
+
 - Issues in upstream dependencies (please report to the dependency maintainer)
 - Social engineering / phishing
 - Issues requiring physical access to the unlocked machine

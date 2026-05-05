@@ -5,6 +5,7 @@ Thanks for your interest in `claude-glance`. The project is pre-alpha — APIs, 
 ## Development setup
 
 Requires:
+
 - [Bun](https://bun.sh) (latest)
 - [Rust](https://rustup.rs/) stable + `rustfmt`, `clippy`
 - Xcode Command Line Tools (`xcode-select --install`)
@@ -33,6 +34,7 @@ bun tauri dev
 ## Bug reports
 
 Open an issue using the **Bug** template. Include:
+
 - macOS version (`sw_vers -productVersion`)
 - `claude-glance` version (Help → About, or commit SHA)
 - Reproduction steps
@@ -46,7 +48,7 @@ Open an issue using the **Feature** template. Describe the use case before propo
 
 - **Rust:** `cargo fmt`, `clippy` clean. Prefer `?` over `unwrap` in non-test code.
 - **TypeScript / Svelte:** strict mode on. Avoid `any`. Prefer derived stores over manual subscriptions.
-- **Comments:** explain *why*, not *what*. Skip if the code is self-evident.
+- **Comments:** explain _why_, not _what_. Skip if the code is self-evident.
 
 ## Releases
 
