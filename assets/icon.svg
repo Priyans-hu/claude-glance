@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f0f12"/>
+      <stop offset="1" stop-color="#000000"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+
+  <!-- session row 1 (running, blue) -->
+  <rect x="180" y="320" width="664" height="80" rx="14" fill="#1f2937"/>
+  <circle cx="232" cy="360" r="18" fill="#3b82f6"/>
+
+  <!-- session row 2 (waiting, amber) -->
+  <rect x="180" y="430" width="664" height="80" rx="14" fill="#1f2937"/>
+  <circle cx="232" cy="470" r="18" fill="#f59e0b"/>
+
+  <!-- session row 3 (idle, grey) -->
+  <rect x="180" y="540" width="664" height="80" rx="14" fill="#1f2937"/>
+  <circle cx="232" cy="580" r="18" fill="#6b7280"/>
+</svg>

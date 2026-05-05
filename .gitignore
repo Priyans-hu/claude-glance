@@ -31,3 +31,7 @@ src-tauri/Cargo.lock
 # Build artifacts
 *.dmg
 *.app
+
+# Vite timestamps
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*

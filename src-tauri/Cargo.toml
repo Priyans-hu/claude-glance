@@ -1,0 +1,37 @@
+[package]
+name = "claude-glance"
+version = "0.0.1"
+description = "Read-only macOS dashboard for monitoring active Claude Code sessions"
+authors = ["Priyanshu Garg"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/Priyans-hu/claude-glance"
+
+[lib]
+name = "claude_glance_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+notify = "6"
+notify-debouncer-full = "0.3"
+tokio = { version = "1", features = ["sync", "rt", "rt-multi-thread", "macros"] }
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5"
+anyhow = "1"
+thiserror = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
