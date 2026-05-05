@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2]
+
+### Fixed
+
+- Sessions where the user has just submitted a message (and Claude is generating a reply that hasn't yet been written to the JSONL transcript) were being shown as `WAITING ON YOU`. They are now correctly classified as `WORKING` whenever the last event is a `user` message within the past 60s.
+
 ### Added
 
-- Initial project scaffolding.
+- Scanner-level filter that drops JSONL files whose latest event timestamp is more than 7 days old. Sessions in the 2-7 day window are folded into a single collapsed `RECENT — last 7 days` group whose expanded state is persisted in `localStorage` under `cg.showRecent`.
+- Click a session row to toggle a detail strip showing the full session UUID (mono, with `[ copy ]`), `cwd`, git branch, started timestamp, and a `[ copy resume command ]` button that copies `claude --resume <uuid>` to the clipboard.
+- Right-click a session row for a vanilla-CSS context menu with the same two copy actions.
+- Header refresh button (lucide `RefreshCw`) that calls a new `rescan_sessions` Tauri command, spins for at least 400ms so it doesn't flicker, then briefly shows `Re-scanned N sessions`.
+
+### Changed
+
+- `SessionStatus` is trimmed from six variants to four (`working`, `waiting`, `plan`, `idle`); `done` and `error` were unused in derivation. Bucketing for display is now driven by event age rather than status alone.
+- Status icons updated to match the new label set: `Activity` (working), `CircleAlert` (waiting), `BookOpen` (plan), `Clock` (idle), `Archive` (recent).
+
+## [0.0.1]
+
+### Added
+
+- Initial project scaffolding (Tauri 2 + SvelteKit + Tailwind v4).
+- FSEvents-based watcher and JSONL parser for `~/.claude/projects/`.
+- Status-grouped UI (`running` / `waiting` / `plan` / `idle` / `done` / `error`).
