@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>claude-glance — every Claude Code session, one window</title>
+    <meta
+      name="description"
+      content="Read-only macOS dashboard for monitoring active Claude Code sessions, grouped by status. Local, native, lightweight."
+    />
+    <meta property="og:title" content="claude-glance" />
+    <meta
+      property="og:description"
+      content="Read-only macOS dashboard for active Claude Code sessions."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+    />
+
+    <style>
+      :root {
+        --bg: #000;
+        --surface: #0a0a0a;
+        --border: #1a1a1a;
+        --text: #d4d4d4;
+        --muted: #6b7280;
+        --prompt: #f59e0b;
+        --link: #60a5fa;
+        --link-hover: #93c5fd;
+        --running: #3b82f6;
+        --waiting: #f59e0b;
+        --plan: #8b5cf6;
+        --done: #10b981;
+        --idle: #6b7280;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.65;
+        font-feature-settings: "calt" 1, "ss01" 1;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      ::selection {
+        background: rgba(245, 158, 11, 0.3);
+      }
+
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+
+      .prompt {
+        color: var(--prompt);
+        font-weight: 500;
+      }
+
+      .prompt::before {
+        content: "$ ";
+        color: var(--muted);
+      }
+
+      .out {
+        color: var(--text);
+        margin: 4px 0 24px;
+        white-space: pre-wrap;
+      }
+
+      .out span.k {
+        color: var(--prompt);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+        letter-spacing: 0;
+      }
+
+      .tagline {
+        color: var(--muted);
+        margin: 0 0 36px;
+      }
+
+      a {
+        color: var(--link);
+        text-decoration: none;
+        border-bottom: 1px dotted var(--link);
+      }
+
+      a:hover {
+        color: var(--link-hover);
+        border-bottom-style: solid;
+      }
+
+      ul {
+        list-style: none;
+        margin: 4px 0 24px;
+        padding: 0;
+      }
+
+      ul li {
+        padding-left: 20px;
+        position: relative;
+      }
+
+      ul li::before {
+        content: "* ";
+        position: absolute;
+        left: 0;
+        color: var(--prompt);
+      }
+
+      pre {
+        margin: 4px 0 24px;
+        padding: 16px 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      pre code {
+        font-family: inherit;
+        color: var(--text);
+      }
+
+      .dashboard {
+        line-height: 1.5;
+      }
+
+      .dashboard .h {
+        color: var(--muted);
+      }
+
+      .dashboard .running {
+        color: var(--running);
+      }
+
+      .dashboard .waiting {
+        color: var(--waiting);
+      }
+
+      .dashboard .plan {
+        color: var(--plan);
+      }
+
+      .dashboard .idle {
+        color: var(--idle);
+      }
+
+      .dashboard .done {
+        color: var(--done);
+      }
+
+      .dashboard .branch {
+        color: var(--muted);
+      }
+
+      .dashboard .time {
+        color: var(--muted);
+      }
+
+      .dashboard .pulse {
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.45;
+        }
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 1em;
+        background: var(--prompt);
+        vertical-align: text-bottom;
+        margin-left: 2px;
+        animation: blink 1s step-start infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      footer {
+        margin-top: 56px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      footer p {
+        margin: 4px 0;
+      }
+
+      footer a {
+        color: var(--muted);
+        border-bottom-color: var(--border);
+      }
+
+      footer a:hover {
+        color: var(--text);
+        border-bottom-color: var(--text);
+      }
+
+      .small {
+        font-size: 11px;
+      }
+
+      @media (max-width: 600px) {
+        main {
+          padding: 32px 16px 56px;
+        }
+        body {
+          font-size: 13px;
+        }
+        pre {
+          font-size: 12px;
+          padding: 12px 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="prompt">claude-glance --about</p>
+      <div class="out">
+        <h1>claude-glance</h1>
+        <p class="tagline">every Claude Code session, one window.</p>
+        Read-only macOS dashboard for monitoring every active Claude Code session. Watches the
+        JSONL transcripts Claude Code already writes; groups sessions by status — waiting, running,
+        plan, idle, done — and updates live. Local, native, ~10&nbsp;MB.
+      </div>
+
+      <p class="prompt">claude-glance --features</p>
+      <ul>
+        <li>FSEvents-driven. No polling. Near-zero CPU when idle.</li>
+        <li>All-local. No network calls, no telemetry, no daemon.</li>
+        <li>Native window via Tauri. ~10&nbsp;MB binary, &lt;30&nbsp;MB RAM.</li>
+        <li>Sessions grouped by status, sorted by what needs your attention first.</li>
+        <li>Subagent counts, git branch, cwd, last activity per row.</li>
+        <li>Reads what's already on disk — no hooks, no setup.</li>
+      </ul>
+
+      <p class="prompt">claude-glance</p>
+      <pre class="dashboard"><span class="h">⚠ Waiting (1) · ● Active (3) · ◔ Plan (1) · ⏸ Idle (1)</span>
+
+<span class="h">──── ⚠ Waiting ───────────────────────────────────────</span>
+<span class="waiting pulse">⚠</span> unreel <span class="branch">· feat/instagram-bot</span>              <span class="time">30s</span>
+   Setting up DM webhook for reel ingest
+
+<span class="h">──── ● Active ────────────────────────────────────────</span>
+<span class="running">●</span> contacto-console <span class="branch">· feat/billing</span>            <span class="time">2m</span>
+   Fix CDR export timezone bug
+<span class="running">●</span> hodor <span class="branch">· main</span>                              <span class="time">45s</span>
+   Add buddy escalation IP ranges
+<span class="plan">◔</span> sentinel <span class="branch">· fix/buddy-inr</span>                  <span class="time">12s</span>
+   plan mode · revising INR voice pricing
+
+<span class="h">──── ⏸ Idle ──────────────────────────────────────────</span>
+<span class="idle">⏸</span> algo-sandbox <span class="branch">· main</span>                       <span class="time">12m</span>
+   last: backtest module <span class="done">✓</span></pre>
+
+      <p class="prompt">claude-glance --install</p>
+      <pre><code># build from source — unsigned, no app store
+git clone https://github.com/Priyans-hu/claude-glance.git
+cd claude-glance
+bun install
+bun tauri build
+
+# move the built app
+mv src-tauri/target/release/bundle/macos/claude-glance.app /Applications/
+
+# bypass Gatekeeper (unsigned binary)
+xattr -d com.apple.quarantine /Applications/claude-glance.app</code></pre>
+
+      <p class="prompt">claude-glance --how</p>
+      <ul>
+        <li>watch: FSEvents on <code>~/.claude/projects/</code></li>
+        <li>parse: JSONL transcripts → typed events</li>
+        <li>derive: status from event recency &amp; type</li>
+        <li>render: native window, status-grouped, live</li>
+      </ul>
+
+      <p class="prompt">claude-glance --links</p>
+      <ul>
+        <li>
+          repo:
+          <a href="https://github.com/Priyans-hu/claude-glance">github.com/Priyans-hu/claude-glance</a>
+        </li>
+        <li>
+          issues:
+          <a href="https://github.com/Priyans-hu/claude-glance/issues">report a bug or request a feature</a>
+        </li>
+        <li>license: MIT</li>
+      </ul>
+
+      <footer>
+        <p class="prompt" style="margin-bottom: 12px"><span class="cursor"></span></p>
+        <p>
+          <a href="https://github.com/Priyans-hu/claude-glance">github</a> ·
+          <a href="https://github.com/Priyans-hu/claude-glance/issues">issues</a> ·
+          <a href="https://github.com/Priyans-hu/claude-glance/blob/main/LICENSE">MIT</a>
+        </p>
+        <p class="small">
+          built by <a href="https://github.com/Priyans-hu">@Priyans-hu</a>. unofficial, third-party.
+          not affiliated with Anthropic.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>
