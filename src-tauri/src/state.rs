@@ -10,12 +10,10 @@ use crate::parser::{AssistantContent, EventKind, SessionEvent};
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SessionStatus {
-    Running,
+    Working,
     Waiting,
     Plan,
     Idle,
-    Done,
-    Error,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -38,9 +36,8 @@ pub struct Session {
 }
 
 const TITLE_MAX_CHARS: usize = 80;
-const RUNNING_WINDOW_SECS: i64 = 15;
-const ACTIVE_WINDOW_SECS: i64 = 60;
-const IDLE_WINDOW_SECS: i64 = 30 * 60;
+const WORKING_TOOL_WINDOW_SECS: i64 = 30;
+const ATTENTION_WINDOW_SECS: i64 = 2 * 60 * 60;
 
 /// Derive a status from events sorted ascending by timestamp.
 /// `now` is injected for testability.
@@ -61,22 +58,24 @@ pub fn derive_status(events: &[SessionEvent], now: DateTime<Utc>) -> SessionStat
         .rev()
         .find(|e| matches!(e.kind, EventKind::Assistant));
 
-    // 1) Plan mode wins if recent.
-    if matches!(last_perm, Some("plan")) && age_secs < ACTIVE_WINDOW_SECS {
-        return SessionStatus::Plan;
-    }
-
-    // 2) Running: very recent, last assistant emitted a tool_use.
-    if age_secs < RUNNING_WINDOW_SECS {
+    // 1) Working: very recent, last assistant emitted a tool_use or thinking.
+    if age_secs < WORKING_TOOL_WINDOW_SECS {
         if let Some(ev) = last_assistant {
-            if ev.assistant_content.contains(&AssistantContent::ToolUse) {
-                return SessionStatus::Running;
+            if ev.assistant_content.contains(&AssistantContent::ToolUse)
+                || ev.assistant_content.contains(&AssistantContent::Thinking)
+            {
+                return SessionStatus::Working;
             }
         }
     }
 
-    // 3) Waiting: recent, last assistant message was text only.
-    if age_secs < ACTIVE_WINDOW_SECS {
+    // 2) Plan mode wins if within attention window.
+    if matches!(last_perm, Some("plan")) && age_secs < ATTENTION_WINDOW_SECS {
+        return SessionStatus::Plan;
+    }
+
+    // 3) Waiting: within attention window, last assistant message was text only.
+    if age_secs < ATTENTION_WINDOW_SECS {
         if let Some(ev) = last_assistant {
             let has_tool = ev.assistant_content.contains(&AssistantContent::ToolUse);
             let has_text = ev.assistant_content.contains(&AssistantContent::Text);
@@ -86,12 +85,8 @@ pub fn derive_status(events: &[SessionEvent], now: DateTime<Utc>) -> SessionStat
         }
     }
 
-    // 4) Idle vs done by age.
-    if age_secs <= IDLE_WINDOW_SECS {
-        SessionStatus::Idle
-    } else {
-        SessionStatus::Done
-    }
+    // 4) Otherwise idle.
+    SessionStatus::Idle
 }
 
 /// Build a `Session` for the given session id from its events. Caller is
@@ -239,23 +234,30 @@ mod tests {
     #[test]
     fn plan_mode_recent_is_plan() {
         let now = t();
-        let events = vec![ev_at(
-            now,
-            5,
-            r#"{"type":"user","permissionMode":"plan","message":{"role":"user","content":"x"}}"#,
-        )];
+        let events = vec![
+            ev_at(
+                now,
+                5,
+                r#"{"type":"user","permissionMode":"plan","message":{"role":"user","content":"x"}}"#,
+            ),
+            ev_at(
+                now,
+                5,
+                r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"plan ok"}]}}"#,
+            ),
+        ];
         assert_eq!(derive_status(&events, now), SessionStatus::Plan);
     }
 
     #[test]
-    fn very_recent_tool_use_is_running() {
+    fn very_recent_tool_use_is_working() {
         let now = t();
         let events = vec![ev_at(
             now,
             5,
             r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Read","id":"x","input":{}}]}}"#,
         )];
-        assert_eq!(derive_status(&events, now), SessionStatus::Running);
+        assert_eq!(derive_status(&events, now), SessionStatus::Working);
     }
 
     #[test]
@@ -270,25 +272,14 @@ mod tests {
     }
 
     #[test]
-    fn old_session_under_30min_is_idle() {
+    fn old_session_outside_attention_window_is_idle() {
         let now = t();
         let events = vec![ev_at(
             now,
-            10 * 60,
+            3 * 60 * 60,
             r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"done"}]}}"#,
         )];
         assert_eq!(derive_status(&events, now), SessionStatus::Idle);
-    }
-
-    #[test]
-    fn over_30min_is_done() {
-        let now = t();
-        let events = vec![ev_at(
-            now,
-            45 * 60,
-            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"done"}]}}"#,
-        )];
-        assert_eq!(derive_status(&events, now), SessionStatus::Done);
     }
 
     #[test]

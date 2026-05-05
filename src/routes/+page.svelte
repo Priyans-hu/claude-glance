@@ -16,7 +16,7 @@
   });
 
   // Header surfaces only the high-signal counts.
-  const headerStatuses: SessionStatus[] = ["waiting", "running", "plan", "idle", "done"];
+  const headerStatuses: SessionStatus[] = ["working", "waiting", "plan", "idle"];
 </script>
 
 <main class="flex min-h-screen flex-col gap-4 px-6 py-5">

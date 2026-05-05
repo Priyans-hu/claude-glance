@@ -7,11 +7,11 @@
   --color-cg-muted: #6b7280;
   --color-cg-text: #e5e7eb;
 
-  --color-cg-running: #3b82f6;
+  --color-cg-working: #3b82f6;
   --color-cg-waiting: #f59e0b;
   --color-cg-plan: #8b5cf6;
-  --color-cg-done: #10b981;
   --color-cg-idle: #6b7280;
+  --color-cg-recent: #4b5563;
   --color-cg-error: #ef4444;
 
   --font-sans:
