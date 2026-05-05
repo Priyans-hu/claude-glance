@@ -2,9 +2,11 @@
   import { ChevronDown, ChevronRight } from "lucide-svelte";
   import StatusIcon from "./StatusIcon.svelte";
   import SessionRow from "./SessionRow.svelte";
+  import SessionDetail from "./SessionDetail.svelte";
   import type { Session } from "../types";
   import type { SessionBucket } from "../grouping";
   import { BUCKET_LABEL } from "../grouping";
+  import { sessionStore } from "../stores.svelte";
 
   interface Props {
     bucket: SessionBucket;
@@ -57,7 +59,12 @@
     {#if showRows}
       <ul class="flex flex-col">
         {#each sessions as session (session.id)}
-          <li><SessionRow {session} /></li>
+          <li>
+            <SessionRow {session} />
+            {#if sessionStore.expandedSessionId === session.id}
+              <SessionDetail {session} />
+            {/if}
+          </li>
         {/each}
       </ul>
     {/if}
