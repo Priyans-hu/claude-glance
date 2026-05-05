@@ -1,0 +1,33 @@
+# Node / Bun
+node_modules/
+dist/
+build/
+.svelte-kit/
+*.log
+bun.lockb
+
+# Rust / Tauri
+target/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/Cargo.lock
+
+# macOS
+.DS_Store
+*.dSYM/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.zed/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+*.dmg
+*.app
