@@ -7,9 +7,7 @@
     <Eye class="h-5 w-5 text-cg-waiting" strokeWidth={2.25} />
     <div>
       <h1 class="text-base font-semibold tracking-tight">claude-glance</h1>
-      <p class="text-xs text-cg-muted">
-        Read-only dashboard for active Claude Code sessions.
-      </p>
+      <p class="text-xs text-cg-muted">Read-only dashboard for active Claude Code sessions.</p>
     </div>
   </header>
 
