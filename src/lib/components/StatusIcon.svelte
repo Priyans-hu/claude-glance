@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Activity, BookOpen, CircleAlert, Clock } from "lucide-svelte";
-  import type { SessionStatus } from "../types";
+  import { Activity, Archive, BookOpen, CircleAlert, Clock } from "lucide-svelte";
+  import type { SessionBucket } from "../grouping";
 
   interface Props {
-    status: SessionStatus;
+    status: SessionBucket;
     size?: number;
     class?: string;
   }
@@ -15,13 +15,15 @@
     waiting: CircleAlert,
     plan: BookOpen,
     idle: Clock,
+    recent: Archive,
   };
 
-  const colorMap: Record<SessionStatus, string> = {
+  const colorMap: Record<SessionBucket, string> = {
     working: "text-cg-working",
     waiting: "text-cg-waiting",
     plan: "text-cg-plan",
     idle: "text-cg-idle",
+    recent: "text-cg-recent",
   };
 
   const Icon = $derived(iconMap[status]);

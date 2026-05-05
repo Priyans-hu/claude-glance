@@ -4,7 +4,7 @@
   import StatusGroup from "$lib/components/StatusGroup.svelte";
   import StatusIcon from "$lib/components/StatusIcon.svelte";
   import { sessionStore } from "$lib/stores.svelte";
-  import { STATUS_ORDER } from "$lib/grouping";
+  import { BUCKET_ORDER } from "$lib/grouping";
   import type { SessionStatus } from "$lib/types";
 
   onMount(() => {
@@ -64,8 +64,14 @@
     </section>
   {:else}
     <div class="flex flex-col gap-4">
-      {#each STATUS_ORDER as status (status)}
-        <StatusGroup {status} sessions={sessionStore.groupedByStatus[status]} />
+      {#each BUCKET_ORDER as bucket (bucket)}
+        <StatusGroup
+          {bucket}
+          sessions={sessionStore.bucketed[bucket]}
+          collapsible={bucket === "recent"}
+          expanded={sessionStore.showRecent}
+          onToggle={bucket === "recent" ? () => sessionStore.toggleShowRecent() : undefined}
+        />
       {/each}
     </div>
   {/if}
