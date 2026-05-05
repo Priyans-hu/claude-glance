@@ -36,6 +36,7 @@ pub struct Session {
 }
 
 const TITLE_MAX_CHARS: usize = 80;
+const WORKING_USER_MSG_WINDOW_SECS: i64 = 60;
 const WORKING_TOOL_WINDOW_SECS: i64 = 30;
 const ATTENTION_WINDOW_SECS: i64 = 2 * 60 * 60;
 
@@ -49,6 +50,7 @@ pub fn derive_status(events: &[SessionEvent], now: DateTime<Utc>) -> SessionStat
     };
 
     let age_secs = (now - last_ts).num_seconds();
+    let last_event_with_ts = events.iter().rev().find(|e| e.timestamp.is_some());
     let last_perm = events
         .iter()
         .rev()
@@ -58,7 +60,18 @@ pub fn derive_status(events: &[SessionEvent], now: DateTime<Utc>) -> SessionStat
         .rev()
         .find(|e| matches!(e.kind, EventKind::Assistant));
 
-    // 1) Working: very recent, last assistant emitted a tool_use or thinking.
+    // 1) Working: a fresh user message means Claude received the prompt and is
+    //    generating; the assistant turn just hasn't been flushed to the JSONL
+    //    yet. Without this the session shows up as "waiting on you".
+    if age_secs < WORKING_USER_MSG_WINDOW_SECS {
+        if let Some(ev) = last_event_with_ts {
+            if matches!(ev.kind, EventKind::User) {
+                return SessionStatus::Working;
+            }
+        }
+    }
+
+    // 2) Working: very recent, last assistant emitted a tool_use or thinking.
     if age_secs < WORKING_TOOL_WINDOW_SECS {
         if let Some(ev) = last_assistant {
             if ev.assistant_content.contains(&AssistantContent::ToolUse)
@@ -69,12 +82,12 @@ pub fn derive_status(events: &[SessionEvent], now: DateTime<Utc>) -> SessionStat
         }
     }
 
-    // 2) Plan mode wins if within attention window.
+    // 3) Plan mode wins if within attention window.
     if matches!(last_perm, Some("plan")) && age_secs < ATTENTION_WINDOW_SECS {
         return SessionStatus::Plan;
     }
 
-    // 3) Waiting: within attention window, last assistant message was text only.
+    // 4) Waiting: within attention window, last assistant message was text only.
     if age_secs < ATTENTION_WINDOW_SECS {
         if let Some(ev) = last_assistant {
             let has_tool = ev.assistant_content.contains(&AssistantContent::ToolUse);
@@ -85,7 +98,7 @@ pub fn derive_status(events: &[SessionEvent], now: DateTime<Utc>) -> SessionStat
         }
     }
 
-    // 4) Otherwise idle.
+    // 5) Otherwise idle.
     SessionStatus::Idle
 }
 
@@ -286,6 +299,54 @@ mod tests {
     fn no_events_with_timestamp_is_idle() {
         let events: Vec<SessionEvent> = vec![];
         assert_eq!(derive_status(&events, t()), SessionStatus::Idle);
+    }
+
+    // Regression test for the v0.0.1 misclassification bug: a session whose
+    // last event is a fresh `user` message (Claude is generating, transcript
+    // hasn't flushed) was incorrectly shown as "waiting on you".
+    #[test]
+    fn fresh_user_msg_is_working() {
+        let now = t();
+        let events = vec![ev_at(
+            now,
+            5,
+            r#"{"type":"user","message":{"role":"user","content":"hi"}}"#,
+        )];
+        assert_eq!(derive_status(&events, now), SessionStatus::Working);
+    }
+
+    #[test]
+    fn fresh_user_msg_at_window_boundary_is_idle() {
+        // 61s old user message — outside the 60s working window, no assistant
+        // turn yet, so the session falls through to idle.
+        let now = t();
+        let events = vec![ev_at(
+            now,
+            61,
+            r#"{"type":"user","message":{"role":"user","content":"hi"}}"#,
+        )];
+        assert_eq!(derive_status(&events, now), SessionStatus::Idle);
+    }
+
+    #[test]
+    fn fresh_user_msg_overrides_stale_assistant() {
+        // The bug case in full: an assistant text-only turn from earlier, then
+        // the user replies; the assistant turn for the new prompt hasn't been
+        // appended yet. Status must read as Working, not Waiting.
+        let now = t();
+        let events = vec![
+            ev_at(
+                now,
+                120,
+                r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"done"}]}}"#,
+            ),
+            ev_at(
+                now,
+                3,
+                r#"{"type":"user","message":{"role":"user","content":"next"}}"#,
+            ),
+        ];
+        assert_eq!(derive_status(&events, now), SessionStatus::Working);
     }
 
     #[test]
