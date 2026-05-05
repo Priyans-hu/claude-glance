@@ -15,10 +15,8 @@
   --color-cg-error: #ef4444;
 
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, Helvetica, Arial,
-    sans-serif;
-  --font-mono:
-    "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 html,
