@@ -41,9 +41,12 @@ pub fn spawn(root: PathBuf) -> Result<(SessionMap, mpsc::Receiver<WatchUpdate>)>
     let map_for_thread = Arc::clone(&map);
     let root_for_thread = root.clone();
     std::thread::spawn(move || {
+        // Second arg is the poll-tick fallback. FSEvents on macOS sometimes
+        // coalesces or drops `Create` events for newly-spawned session
+        // files; a 5s poll catches those without flooding the channel.
         let mut debouncer = match new_debouncer(
             Duration::from_millis(250),
-            None,
+            Some(Duration::from_secs(5)),
             move |res: notify_debouncer_full::DebounceEventResult| match res {
                 Ok(events) => {
                     let paths: Vec<PathBuf> =
