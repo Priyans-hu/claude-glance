@@ -1,4 +1,5 @@
 pub mod parser;
+pub mod process;
 pub mod scanner;
 pub mod state;
 pub mod watcher;
