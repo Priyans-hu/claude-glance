@@ -38,12 +38,15 @@
     }
     const startedAt = Date.now();
     try {
-      const count = await rescanSessions();
+      const sessions = await rescanSessions();
+      // Apply the snapshot directly — don't depend on the sessions_changed
+      // event reaching the store before this promise resolves.
+      sessionStore.sessions = sessions;
       const elapsed = Date.now() - startedAt;
       if (elapsed < SPINNER_MIN_MS) {
         await new Promise((r) => setTimeout(r, SPINNER_MIN_MS - elapsed));
       }
-      lastCount = count;
+      lastCount = sessions.length;
       resultTimer = setTimeout(() => {
         lastCount = null;
         resultTimer = null;

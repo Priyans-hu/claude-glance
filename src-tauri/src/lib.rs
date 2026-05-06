@@ -77,7 +77,7 @@ async fn delete_session(
 async fn rescan_sessions(
     app: tauri::AppHandle,
     state: tauri::State<'_, SessionMap>,
-) -> Result<usize, String> {
+) -> Result<Vec<Session>, String> {
     let root = scanner::default_projects_root().ok_or_else(|| "no home directory".to_string())?;
     refresh(&root, &state).map_err(|e| e.to_string())?;
 
@@ -85,12 +85,13 @@ async fn rescan_sessions(
         let guard = state.lock().unwrap();
         guard.values().cloned().collect()
     };
-    let count = snapshot.len();
 
-    if let Err(err) = app.emit(SESSIONS_CHANGED_EVENT, snapshot) {
+    // Still emit so any other listeners (e.g. future menu-bar UI) stay in
+    // sync, but the caller no longer has to trust the event for correctness.
+    if let Err(err) = app.emit(SESSIONS_CHANGED_EVENT, snapshot.clone()) {
         eprintln!("claude-glance: failed to emit rescan update: {err}");
     }
-    Ok(count)
+    Ok(snapshot)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
