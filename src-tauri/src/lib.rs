@@ -47,6 +47,33 @@ async fn stop_session(
 }
 
 #[tauri::command]
+async fn delete_session(
+    session_id: String,
+    state: tauri::State<'_, SessionMap>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let path = transcript_path_for(&state, &session_id)?;
+
+    // Stop any live holder first so it can't recreate the file mid-delete.
+    if let Some(pid) = process::find_holder_pid(&path) {
+        process::stop_pid(pid).map_err(|e| e.to_string())?;
+    }
+
+    cleanup::delete_session_files(&path).map_err(|e| e.to_string())?;
+
+    let snapshot: Vec<Session> = {
+        let mut guard = state.lock().unwrap();
+        guard.remove(&session_id);
+        guard.values().cloned().collect()
+    };
+
+    if let Err(err) = app.emit(SESSIONS_CHANGED_EVENT, snapshot) {
+        eprintln!("claude-glance: failed to emit delete update: {err}");
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn rescan_sessions(
     app: tauri::AppHandle,
     state: tauri::State<'_, SessionMap>,
@@ -103,7 +130,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             list_sessions,
             rescan_sessions,
-            stop_session
+            stop_session,
+            delete_session
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
