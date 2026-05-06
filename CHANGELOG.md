@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3]
+
+### Added
+
+- Each session row now exposes a 3-dot overflow menu (lucide `MoreVertical`) revealed on row hover with two actions: **Stop session** sends `SIGTERM` to the `claude` process holding the JSONL (escalates to `SIGKILL` after 300ms) and leaves the transcript intact. **Delete session…** prompts via the native confirm dialog and, on confirmation, kills the process if alive then removes both the JSONL and the per-session sibling directory (`subagents/`, `tool-results/`, `session-env/`).
+- New Rust modules: `process` (finds the PID holding a `.jsonl` open via `lsof -F p` and kills it via `nix::sys::signal`) and `cleanup` (best-effort recursive removal of the JSONL and its sibling directory).
+- New Tauri commands: `stop_session(id)` returns whether a process was actually stopped; `delete_session(id)` is fire-and-forget but emits a `sessions_changed` event after mutating the map.
+- `Session.transcript_path` (camelCase `transcriptPath` over the wire) so the new commands can resolve the JSONL without re-walking `~/.claude/projects/`.
+
+### Fixed
+
+- `rescan_sessions` now returns the fresh `Vec<Session>` directly and the frontend applies it to the store immediately, sidestepping the `sessions_changed` event-listener race that occasionally caused refreshes to look like no-ops.
+- Notify debouncer now polls every 5 seconds as a safety net for missed FSEvents — newly-created sessions in busy directories no longer slip through the watcher.
+
 ## [0.0.2]
 
 ### Fixed

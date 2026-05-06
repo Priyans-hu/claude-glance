@@ -12,13 +12,31 @@ export async function getSessions(): Promise<Session[]> {
 }
 
 /**
- * Force a full re-walk of `~/.claude/projects/`. Returns the new
- * visible session count (already excluding stale sessions). The backend
- * also emits a `sessions_changed` event, so the store update path stays
- * unchanged.
+ * Force a full re-walk of `~/.claude/projects/`. Returns the fresh
+ * snapshot directly so the caller can apply it without relying on the
+ * `sessions_changed` event (which can race with the resolution of this
+ * promise). The backend still emits the event so other listeners stay
+ * in sync.
  */
-export async function rescanSessions(): Promise<number> {
-  return invoke<number>("rescan_sessions");
+export async function rescanSessions(): Promise<Session[]> {
+  return invoke<Session[]>("rescan_sessions");
+}
+
+/**
+ * Stop the running `claude` process backing this session, if any.
+ * Resolves to `true` if a process was signalled, `false` if no live
+ * process was holding the JSONL.
+ */
+export async function stopSession(id: string): Promise<boolean> {
+  return invoke<boolean>("stop_session", { sessionId: id });
+}
+
+/**
+ * Delete the session's JSONL transcript and its sibling per-session
+ * directory. Stops the running process first if one is alive. Destructive.
+ */
+export async function deleteSession(id: string): Promise<void> {
+  await invoke<void>("delete_session", { sessionId: id });
 }
 
 /**

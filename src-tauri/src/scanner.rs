@@ -95,7 +95,13 @@ pub fn load_session(path: &Path, now: DateTime<Utc>) -> Option<Session> {
     }
 
     let subagent_count = count_subagents(path, &session_id);
-    Some(build_session(session_id, &events, subagent_count, now))
+    Some(build_session(
+        session_id,
+        &events,
+        subagent_count,
+        now,
+        path.to_path_buf(),
+    ))
 }
 
 fn count_subagents(jsonl_path: &Path, session_id: &str) -> u32 {
@@ -176,6 +182,7 @@ mod tests {
         assert_eq!(s.title, "hello");
         assert_eq!(s.branch.as_deref(), Some("main"));
         assert_eq!(s.tokens, 7);
+        assert_eq!(s.transcript_path, path);
     }
 
     #[test]

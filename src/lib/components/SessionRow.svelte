@@ -1,5 +1,6 @@
 <script lang="ts">
   import StatusIcon from "./StatusIcon.svelte";
+  import RowMenu from "./RowMenu.svelte";
   import { Bot, GitBranch } from "lucide-svelte";
   import type { Session } from "../types";
   import { formatRelativeTime } from "../time";
@@ -56,7 +57,7 @@
 <svelte:window onclick={closeMenu} />
 
 <div
-  class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-cg-surface"
+  class="cg-session-row flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-cg-surface"
   role="button"
   tabindex="0"
   data-testid="session-row-{session.id}"
@@ -95,6 +96,8 @@
   <span class="w-16 shrink-0 text-right text-xs text-cg-muted tabular-nums">
     {formatRelativeTime(session.lastActivity)}
   </span>
+
+  <RowMenu sessionId={session.id} />
 </div>
 
 {#if menuOpen}

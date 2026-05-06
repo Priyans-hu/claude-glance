@@ -2,6 +2,8 @@
 //! filesystem context (filename, subagent dir) into the `Session` shape the
 //! UI consumes.
 
+use std::path::PathBuf;
+
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
@@ -33,6 +35,11 @@ pub struct Session {
     #[serde(rename = "lastActivity")]
     pub last_activity: String,
     pub tokens: u64,
+    /// Absolute path to the JSONL transcript backing this session. Carried
+    /// on the Session so commands like stop / delete don't have to re-walk
+    /// the projects root every time.
+    #[serde(rename = "transcriptPath")]
+    pub transcript_path: PathBuf,
 }
 
 const TITLE_MAX_CHARS: usize = 80;
@@ -110,6 +117,7 @@ pub fn build_session(
     events: &[SessionEvent],
     subagent_count: u32,
     now: DateTime<Utc>,
+    transcript_path: PathBuf,
 ) -> Session {
     // Pick the canonical cwd / branch / permission_mode from the most recent
     // event that has them set.
@@ -150,6 +158,7 @@ pub fn build_session(
         subagent_count,
         last_activity,
         tokens,
+        transcript_path,
     }
 }
 
@@ -242,6 +251,10 @@ mod tests {
 
     fn t() -> DateTime<Utc> {
         Utc.with_ymd_and_hms(2026, 1, 1, 12, 0, 0).unwrap()
+    }
+
+    fn fake_path(id: &str) -> PathBuf {
+        PathBuf::from(format!("/tmp/{id}.jsonl"))
     }
 
     #[test]
@@ -364,7 +377,7 @@ mod tests {
                 r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"ok"}]}}"#,
             ),
         ];
-        let s = build_session("sess-1".into(), &events, 0, now);
+        let s = build_session("sess-1".into(), &events, 0, now, fake_path("sess-1"));
         assert_eq!(s.id, "sess-1");
         assert_eq!(s.project, "myproj");
         assert_eq!(s.title, "refactor the parser");
@@ -380,7 +393,7 @@ mod tests {
             5,
             r#"{"type":"user","cwd":"/Users/x/plivo/contacto-console--worktrees-fix-cdr-export-tz"}"#,
         )];
-        let s = build_session("s".into(), &events, 0, now);
+        let s = build_session("s".into(), &events, 0, now, fake_path("s"));
         assert_eq!(s.project, "contacto-console:fix-cdr-export-tz");
     }
 
@@ -392,7 +405,7 @@ mod tests {
             5,
             r#"{"type":"user","cwd":"/Users/x/plivo/contacto-core/.claude/worktrees/fix-buddy-escalation-ip"}"#,
         )];
-        let s = build_session("s".into(), &events, 0, now);
+        let s = build_session("s".into(), &events, 0, now, fake_path("s"));
         assert_eq!(s.project, "contacto-core:fix-buddy-escalation-ip");
     }
 
@@ -404,7 +417,7 @@ mod tests {
             r#"{{"type":"user","cwd":"/x/y","message":{{"role":"user","content":"{long}"}}}}"#
         );
         let events = vec![ev_at(now, 5, &line)];
-        let s = build_session("s".into(), &events, 0, now);
+        let s = build_session("s".into(), &events, 0, now, fake_path("s"));
         assert!(s.title.chars().count() <= 81); // 80 chars + ellipsis
         assert!(s.title.ends_with('…'));
     }
@@ -417,7 +430,7 @@ mod tests {
             10,
             r#"{"type":"user","cwd":"/x/proj","message":{"role":"user","content":"go"}}"#,
         )];
-        let s = build_session("s".into(), &events, 3, now);
+        let s = build_session("s".into(), &events, 3, now, fake_path("s"));
         assert_eq!(s.subagent_count, 3);
     }
 
@@ -441,7 +454,20 @@ mod tests {
                 r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"b"}],"usage":{"input_tokens":3,"output_tokens":2}}}"#,
             ),
         ];
-        let s = build_session("s".into(), &events, 0, now);
+        let s = build_session("s".into(), &events, 0, now, fake_path("s"));
         assert_eq!(s.tokens, 20);
+    }
+
+    #[test]
+    fn build_session_propagates_transcript_path() {
+        let now = t();
+        let path = PathBuf::from("/Users/x/.claude/projects/-Users-x-proj/abc.jsonl");
+        let events = vec![ev_at(
+            now,
+            10,
+            r#"{"type":"user","cwd":"/x/proj","message":{"role":"user","content":"go"}}"#,
+        )];
+        let s = build_session("abc".into(), &events, 0, now, path.clone());
+        assert_eq!(s.transcript_path, path);
     }
 }
