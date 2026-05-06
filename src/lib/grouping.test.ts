@@ -21,6 +21,7 @@ function s(id: string, status: Session["status"], lastActivity: string): Session
     subagentCount: 0,
     lastActivity,
     tokens: 0,
+    transcriptPath: "",
   };
 }
 

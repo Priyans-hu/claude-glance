@@ -25,4 +25,6 @@ export interface Session {
   lastActivity: string;
   /** Aggregate tokens for the session (input + output). */
   tokens: number;
+  /** Absolute path to the JSONL transcript backing this session. */
+  transcriptPath: string;
 }

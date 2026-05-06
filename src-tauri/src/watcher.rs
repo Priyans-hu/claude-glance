@@ -188,6 +188,7 @@ mod tests {
                     subagent_count: 0,
                     last_activity: String::new(),
                     tokens: 0,
+                    transcript_path: PathBuf::new(),
                 },
             );
         }
