@@ -5,6 +5,8 @@ pub mod scanner;
 pub mod state;
 pub mod watcher;
 
+use std::path::PathBuf;
+
 use tauri::{Emitter, Manager};
 
 use crate::state::Session;
@@ -18,6 +20,30 @@ fn list_sessions(state: tauri::State<'_, SessionMap>) -> Vec<Session> {
     let mut sessions: Vec<Session> = guard.values().cloned().collect();
     sessions.sort_by(|a, b| b.last_activity.cmp(&a.last_activity));
     sessions
+}
+
+/// Resolve the JSONL transcript path for `session_id` from the in-memory
+/// session map. Returns an error if the session id is unknown so callers
+/// surface a helpful message instead of an opaque IPC failure.
+fn transcript_path_for(state: &SessionMap, session_id: &str) -> Result<PathBuf, String> {
+    let guard = state.lock().unwrap();
+    guard
+        .get(session_id)
+        .map(|s| s.transcript_path.clone())
+        .ok_or_else(|| format!("unknown session id: {session_id}"))
+}
+
+#[tauri::command]
+async fn stop_session(
+    session_id: String,
+    state: tauri::State<'_, SessionMap>,
+) -> Result<bool, String> {
+    let path = transcript_path_for(&state, &session_id)?;
+    let Some(pid) = process::find_holder_pid(&path) else {
+        return Ok(false);
+    };
+    process::stop_pid(pid).map_err(|e| e.to_string())?;
+    Ok(true)
 }
 
 #[tauri::command]
@@ -74,7 +100,11 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_sessions, rescan_sessions])
+        .invoke_handler(tauri::generate_handler![
+            list_sessions,
+            rescan_sessions,
+            stop_session
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
