@@ -1,3 +1,4 @@
+pub mod cleanup;
 pub mod parser;
 pub mod process;
 pub mod scanner;
