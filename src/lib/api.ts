@@ -23,6 +23,23 @@ export async function rescanSessions(): Promise<Session[]> {
 }
 
 /**
+ * Stop the running `claude` process backing this session, if any.
+ * Resolves to `true` if a process was signalled, `false` if no live
+ * process was holding the JSONL.
+ */
+export async function stopSession(id: string): Promise<boolean> {
+  return invoke<boolean>("stop_session", { sessionId: id });
+}
+
+/**
+ * Delete the session's JSONL transcript and its sibling per-session
+ * directory. Stops the running process first if one is alive. Destructive.
+ */
+export async function deleteSession(id: string): Promise<void> {
+  await invoke<void>("delete_session", { sessionId: id });
+}
+
+/**
  * Subscribe to live session updates. Returns an unlisten function.
  * The callback receives the full snapshot every time something changes.
  */
